@@ -28,11 +28,15 @@ read -r -d '' BLOCK <<'BLOCK_EOF' || true
 #
 # Build the image first:  cd ~/Projects/agy-sandbox && ./build.sh
 agy-sandbox() {
+  printf '>> agy will see: %s\n   Run from here? [y/N] ' "$PWD"
+  local answer; read -r answer
+  [[ "${answer:-}" =~ ^[Yy]$ ]] || { echo "Cancelled."; return 0; }
   local config_dir="$HOME/.local/share/agy-sandbox"
   mkdir -p "$config_dir"
   podman unshare chown -R 1000:1000 "$config_dir"
   podman run --rm -it \
     --cap-drop=ALL --security-opt=no-new-privileges \
+    -e TERM="${TERM:-xterm-256color}" \
     -v "$config_dir":/home/agy:Z \
     -v "$PWD":/work:Z \
     localhost/agy-sandbox:latest \
