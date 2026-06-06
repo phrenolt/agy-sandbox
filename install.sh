@@ -35,7 +35,7 @@ agy-sandbox() {
   mkdir -p "$config_dir"
   podman unshare chown -R 1000:1000 "$config_dir"
   podman run --rm -it \
-    --cap-drop=ALL --cap-add=CAP_SETUID --cap-add=CAP_SETGID \
+    --cap-drop=ALL \
     --security-opt=no-new-privileges \
     -e TERM="${TERM:-xterm-256color}" \
     -v "$config_dir":/home/agy:Z \
