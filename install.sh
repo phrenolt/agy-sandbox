@@ -43,6 +43,22 @@ agy-sandbox() {
     localhost/agy-sandbox:latest \
     "$@"
 }
+
+# Non-interactive prompt — output goes to stdout, pipeable, no project dir mounted.
+# Usage:  agy-sandbox-prompt "write a hello world in Go"
+#         result=$(agy-sandbox-prompt "summarise this text: ...")
+agy-sandbox-prompt() {
+  [ -z "${*:-}" ] && { echo "usage: agy-sandbox-prompt <prompt>" >&2; return 1; }
+  local config_dir="$HOME/.local/share/agy-sandbox"
+  mkdir -p "$config_dir"
+  podman unshare chown -R 1000:1000 "$config_dir"
+  podman run --rm -i \
+    --cap-drop=ALL \
+    --security-opt=no-new-privileges \
+    -v "$config_dir":/home/agy:Z \
+    localhost/agy-sandbox:latest \
+    --print "$*"
+}
 # <<< agy-sandbox <<<
 BLOCK_EOF
 
