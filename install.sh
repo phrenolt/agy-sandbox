@@ -52,7 +52,7 @@ agy-sandbox-prompt() {
   local config_dir="$HOME/.local/share/agy-sandbox"
   mkdir -p "$config_dir"
   podman unshare chown -R 1000:1000 "$config_dir"
-  podman run --rm -i \
+  podman run --rm \
     --cap-drop=ALL \
     --security-opt=no-new-privileges \
     -v "$config_dir":/home/agy:Z \
