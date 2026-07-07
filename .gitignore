@@ -1,0 +1,34 @@
+# Local environment and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# Runtime state and caches
+.cache/
+.config/
+.local/
+.codex/
+.claude/
+.agents/
+node_modules/
+__pycache__/
+*.py[cod]
+
+# Logs and temporary output
+*.log
+*.tmp
+tmp/
+dist/
+build/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

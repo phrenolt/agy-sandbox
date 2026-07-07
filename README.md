@@ -4,7 +4,7 @@ Runs the Google Antigravity CLI (`agy`) inside a Podman container — no host mo
 
 ```bash
 agy-sandbox              # launch interactive session
-agy-sandbox --print "write a hello world in Go"   # non-interactive
+agy-sandbox-prompt "write a hello world in Go"   # non-interactive
 ```
 
 ## Why containerise it
@@ -38,7 +38,7 @@ agy-sandbox
 The version is pinned at image build time. To update:
 
 ```bash
-cd ~/Projects/agy-sandbox
+cd /path/to/agy-sandbox
 ./build.sh   # pulls latest manifest, re-verifies checksum, rebuilds
 ```
 
@@ -54,7 +54,7 @@ Config, auth tokens, and Chromium state land in `~/.local/share/agy-sandbox/` on
 
 ## Image
 
-Built from `debian:bookworm-slim` with only the Chromium headless runtime deps (no GPU, audio, or font libs — those are only needed when rendering a display). The binary is downloaded from Google's official CDN, SHA512-verified at build time, and not executed during the build (`agy install` is intentionally skipped — shell config is the host's business).
+Built from `debian:bookworm-slim` with Node/npm, Python 3, and only the Chromium headless runtime deps (no GPU, audio, or font libs — those are only needed when rendering a display). The binary is downloaded from Google's official CDN, SHA512-verified at build time, and not executed during the build (`agy install` is intentionally skipped — shell config is the host's business).
 
 ## Requirements
 
