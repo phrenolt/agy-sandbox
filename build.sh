@@ -11,6 +11,6 @@ else
 fi
 echo ">> using: $engine"
 
-$engine build -t localhost/agy-sandbox:latest -f Containerfile .
+$engine build --no-cache -t localhost/agy-sandbox:latest -f Containerfile .
 echo ">> built: localhost/agy-sandbox:latest"
 echo ">> run:   agy-sandbox"

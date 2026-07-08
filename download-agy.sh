@@ -10,16 +10,29 @@ case "$(uname -m)" in
   *) echo "Unsupported arch: $(uname -m)" >&2; exit 1 ;;
 esac
 
-manifest=$(curl -fsSL "${MANIFEST_BASE}/manifests/${platform}.json")
+# Add bounds to prevent DoS via huge payload or hang
+manifest=$(curl -fsSL --max-time 10 "${MANIFEST_BASE}/manifests/${platform}.json" | head -c 10240)
 
-url=$(    echo "$manifest" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-sha512=$( echo "$manifest" | sed -n 's/.*"sha512"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-version=$(echo "$manifest" | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+url=$(    echo "$manifest" | grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 | head -n 1)
+sha512=$( echo "$manifest" | grep -o '"sha512"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 | head -n 1)
+version=$(echo "$manifest" | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 | head -n 1)
 
 [ -n "$url" ] && [ -n "$sha512" ] || { echo "Failed to parse manifest" >&2; exit 1; }
+
+# Validate extracted fields against strict regexes
+if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+  echo "Error: Invalid version format in manifest" >&2; exit 1
+fi
+if ! [[ "$sha512" =~ ^[a-f0-9]{128}$ ]]; then
+  echo "Error: Invalid sha512 format in manifest" >&2; exit 1
+fi
+if ! [[ "$url" =~ ^https://[a-zA-Z0-9.-]+(/.*)?$ ]]; then
+  echo "Error: Invalid URL format in manifest (must be HTTPS)" >&2; exit 1
+fi
+
 echo ">> downloading agy ${version}..."
 
-curl -fsSL -o /tmp/pkg "$url"
+curl -fsSL --max-time 300 -o /tmp/pkg "$url"
 actual=$(sha512sum /tmp/pkg | cut -d' ' -f1)
 [ "$actual" = "$sha512" ] || { echo "Checksum mismatch — refusing to install" >&2; exit 1; }
 echo ">> checksum OK"

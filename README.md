@@ -5,6 +5,10 @@ Runs the Google Antigravity CLI (`agy`) inside a Podman container — no host mo
 ```bash
 agy-sandbox              # launch interactive session
 agy-sandbox-prompt "write a hello world in Go"   # non-interactive
+agy-sandbox-prompt --im "Write a python script to calculate the fibonacci sequence"
+agy-sandbox-prompt --model "gemini-1.5-pro" --prompt "Write a python script to calculate the fibonacci sequence"
+agy-sandbox-prompt models    # list available models
+agy-sandbox-prompt --usage   # show agy usage
 ```
 
 ## Why containerise it
@@ -38,8 +42,7 @@ agy-sandbox
 The version is pinned at image build time. To update:
 
 ```bash
-cd /path/to/agy-sandbox
-./build.sh   # pulls latest manifest, re-verifies checksum, rebuilds
+agy-sandbox-update   # pulls latest manifest, re-verifies checksum, rebuilds, repins
 ```
 
 No silent background updates ever touch your host.
