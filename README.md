@@ -7,7 +7,7 @@ agy-sandbox              # launch interactive session
 agy-sandbox-sh           # drop into a bash shell inside the container
 agy-sandbox-prompt "write a hello world in Go"   # non-interactive
 agy-sandbox-prompt --im "Write a python script to calculate the fibonacci sequence" # allows selecting the model for the prompt interactively
-agy-sandbox-prompt --model "gemini-3.1-pro" --prompt "Write a python script to calculate the fibonacci sequence"
+agy-sandbox-prompt --model "Gemini 3.1 Pro (High)" --prompt "Tell what model you are" # note the model is case sensitive! use models below or --im above to call correct model.
 agy-sandbox-prompt models    # list available models
 agy-sandbox-prompt --usage   # show agy usage
 ```
