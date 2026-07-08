@@ -4,9 +4,10 @@ Runs the Google Antigravity CLI (`agy`) inside a Podman container — no host mo
 
 ```bash
 agy-sandbox              # launch interactive session
+agy-sandbox-sh           # drop into a bash shell inside the container
 agy-sandbox-prompt "write a hello world in Go"   # non-interactive
-agy-sandbox-prompt --im "Write a python script to calculate the fibonacci sequence"
-agy-sandbox-prompt --model "gemini-1.5-pro" --prompt "Write a python script to calculate the fibonacci sequence"
+agy-sandbox-prompt --im "Write a python script to calculate the fibonacci sequence" # allows selecting the model for the prompt interactively
+agy-sandbox-prompt --model "gemini-3.1-pro" --prompt "Write a python script to calculate the fibonacci sequence"
 agy-sandbox-prompt models    # list available models
 agy-sandbox-prompt --usage   # show agy usage
 ```
@@ -39,7 +40,13 @@ agy-sandbox
 
 ## Updating agy
 
-The version is pinned at image build time. To update:
+The version is pinned at image build time. To check if an update is available without downloading:
+
+```bash
+agy-sandbox-check-update
+```
+
+To update:
 
 ```bash
 agy-sandbox-update   # pulls latest manifest, re-verifies checksum, rebuilds, repins

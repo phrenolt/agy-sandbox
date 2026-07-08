@@ -206,8 +206,8 @@ agy-sandbox-sh() {
 
 # Non-interactive agy wrapper — output goes to stdout, pipeable, no project dir mounted.
 # Usage:  agy-sandbox-prompt "write a hello world in Go"   # legacy prompt shorthand
-#         agy-sandbox-prompt --im "write a hello world in Go"
-#         agy-sandbox-prompt --model gemini-1.5-pro --prompt "write a hello world in Go"
+#         agy-sandbox-prompt --im "write a hello world in Go" # interactive model selection
+#         agy-sandbox-prompt --model gemini-3.1-pro --prompt "write a hello world in Go"
 #         agy-sandbox-prompt models
 #         agy-sandbox-prompt --usage
 #         result=$(agy-sandbox-prompt --prompt "summarise this text: ...")
