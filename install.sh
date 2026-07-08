@@ -62,6 +62,9 @@ agy-sandbox-update() {
 
 # Check if an update is available for agy without downloading it
 agy-sandbox-check-update() {
+  local auto_mode=0
+  [ "${1:-}" = "--auto" ] && auto_mode=1
+
   local platform="linux_amd64"
   if [ "$(uname -m)" = "aarch64" ] || [ "$(uname -m)" = "arm64" ]; then
     platform="linux_arm64"
@@ -69,20 +72,17 @@ agy-sandbox-check-update() {
   local manifest_url="https://antigravity-cli-auto-updater-974169037036.us-central1.run.app/manifests/${platform}.json"
   
   local latest_version
-  # 1. Limit max download time to prevent hanging
-  # 2. Limit byte processing using head to prevent DoS via huge payloads
-  # 3. Extract just the version string
-  latest_version=$(curl -fsSL --max-time 10 "$manifest_url" 2>/dev/null | head -c 10240 | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 | head -n 1)
+  # Reduce max-time to 3s for auto-checks to avoid blocking startup if offline
+  latest_version=$(curl -fsSL --max-time 3 "$manifest_url" 2>/dev/null | head -c 10240 | grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' | cut -d'"' -f4 | head -n 1)
   
   if [ -z "$latest_version" ]; then
-    echo "Error: Could not fetch latest version info." >&2
+    [ $auto_mode -eq 0 ] && echo "Error: Could not fetch latest version info." >&2
     return 1
   fi
 
   # Validate that the version string matches an expected safe format (Semantic Versioning)
-  # This prevents malicious payloads or script injections if the URL is hijacked.
   if ! [[ "$latest_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
-    echo "Error: Fetched version string has an invalid or unsafe format: $latest_version" >&2
+    [ $auto_mode -eq 0 ] && echo "Error: Fetched version string has an invalid format: $latest_version" >&2
     return 1
   fi
 
@@ -90,13 +90,16 @@ agy-sandbox-check-update() {
   # We use agy-sandbox-prompt to silently run 'agy --version' inside the container
   current_version=$(agy-sandbox-prompt --version 2>/dev/null | awk '{print $NF}' || echo "unknown")
 
-  echo "Current version: $current_version"
-  echo "Latest version:  $latest_version"
-
   if [ "$current_version" != "$latest_version" ] && [ "$current_version" != "unknown" ]; then
-    echo -e "\033[1;32mAn update is available! Run 'agy-sandbox-update' to upgrade.\033[0m"
+    echo -e "\033[1;32mUpdate available: $current_version -> $latest_version\033[0m"
+    return 2
   else
-    echo "You are up to date."
+    if [ $auto_mode -eq 0 ]; then
+      echo "Current version: $current_version"
+      echo "Latest version:  $latest_version"
+      echo "You are up to date."
+    fi
+    return 0
   fi
 }
 
@@ -124,6 +127,22 @@ _agy_sandbox_base() {
 
   local engine; engine="$(_agy_engine)"
   [ -n "$engine" ] || { echo "Error: neither podman nor docker found." >&2; return 1; }
+
+  # Check for updates max once every 24 hours (86400 seconds)
+  local last_check="$HOME/.config/agy-sandbox/last-update-check"
+  local now; now=$(date +%s)
+  local last_time; last_time=$(cat "$last_check" 2>/dev/null || echo 0)
+  if [ $((now - last_time)) -gt 86400 ]; then
+    mkdir -p "$HOME/.config/agy-sandbox"
+    echo "$now" > "$last_check"
+    agy-sandbox-check-update --auto
+    if [ $? -eq 2 ]; then
+      read -e -p ">> Update now? [y/N] " update_choice
+      case "$update_choice" in
+        [Yy]*) agy-sandbox-update ;;
+      esac
+    fi
+  fi
 
   local project_dir
   if [ $# -gt 0 ] && [ -d "$1" ]; then
