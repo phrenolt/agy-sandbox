@@ -2,6 +2,7 @@
 
 <p>
   <a href="https://github.com/phrenolt/agy-sandbox/actions/workflows/ci.yml"><img src="https://github.com/phrenolt/agy-sandbox/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci"></a>
+  <a href="https://github.com/phrenolt/agy-sandbox/actions/workflows/build.yml"><img src="https://github.com/phrenolt/agy-sandbox/actions/workflows/build.yml/badge.svg?branch=main" alt="build"></a>
 </p>
 
 Runs the Google Antigravity CLI (`agy`) inside a Podman container — no host modifications, no silent self-updates, no Electron runtime scattered across your home directory.

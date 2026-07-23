@@ -48,7 +48,13 @@ jobs:
 
       - name: Verify everything resolves (Postgres boots + toolchains present)
         run: |
-          podman run --rm --cap-drop=ALL --security-opt=no-new-privileges \
+          # Mirror the real launcher (common/lib.sh): keep-id maps the
+          # container's uid 1000 (agy, owner of /home/agy) back to the runner
+          # user, so a cap-dropped process can still write its own home.
+          # Without it the runner's uid (1001) != the image user and every
+          # write to /home/agy is denied.
+          podman run --rm --userns=keep-id:uid=1000,gid=1000 \
+            --cap-drop=ALL --security-opt=no-new-privileges \
             localhost/agy-sandbox:ci /bin/bash -c '
               set -e
               # Postgres is NOT bwrap-wrapped: the shared entrypoint already ran
