@@ -106,31 +106,10 @@ ARG MANIFEST_BASE="https://antigravity-cli-auto-updater-974169037036.us-central1
 COPY download-agy.sh /tmp/download-agy.sh
 RUN MANIFEST_BASE="${MANIFEST_BASE}" bash /tmp/download-agy.sh && rm /tmp/download-agy.sh
 
-# Create entrypoint script for DB initialization and routing
-RUN printf '#!/bin/bash\n\
-if command -v pg_ctl >/dev/null 2>&1; then\n\
-  export PGDATA=/home/agy/pgdata\n\
-  rm -f "$PGDATA/postmaster.pid"\n\
-  if [ ! -d "$PGDATA" ]; then\n\
-    echo ">> Initializing PostgreSQL..."\n\
-    initdb -D "$PGDATA" --auth-local=trust --auth-host=trust\n\
-    pg_ctl -D "$PGDATA" -o "-k /tmp" -l /home/agy/pg.log start\n\
-    sleep 2\n\
-    createuser -h /tmp -s agy || true\n\
-    createdb -h /tmp agy || true\n\
-  else\n\
-    echo ">> Starting PostgreSQL..."\n\
-    pg_ctl -D "$PGDATA" -o "-k /tmp" -l /home/agy/pg.log start\n\
-  fi\n\
-fi\n\
-\n\
-if [ $# -eq 0 ]; then\n\
-  exec agy\n\
-elif [ "$1" = "/bin/bash" ]; then\n\
-  exec "$@"\n\
-else\n\
-  exec agy "$@"\n\
-fi\n' > /usr/local/bin/entrypoint.sh && chmod +x /usr/local/bin/entrypoint.sh
+# Shared entrypoint (DB init + routing) from the agents-sandbox-common submodule.
+ENV SBX_AGENT=agy \
+    SBX_HOME=/home/agy
+COPY --chmod=0755 common/container/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # dedicated non-root user
 RUN useradd -m -u 1000 -s /bin/bash agy

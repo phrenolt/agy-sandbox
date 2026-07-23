@@ -22,7 +22,7 @@ jobs:
       # Scripts must parse.
       - name: Shell syntax
         run: |
-          for f in build.sh install.sh entrypoint.sh; do
+          for f in *.sh; do
             if [ -f "$f" ]; then bash -n "$f"; fi
           done
 
@@ -36,3 +36,7 @@ jobs:
       # Shared logic lives in the submodule — run its unit suite.
       - name: Shared unit tests
         run: ./common/tests/run.sh
+
+      # agy-specific wiring + the parity contract.
+      - name: Consumer tests
+        run: ./tests/run.sh
