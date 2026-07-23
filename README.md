@@ -1,5 +1,9 @@
 # agy-sandbox
 
+<p>
+  <a href="https://github.com/phrenolt/agy-sandbox/actions/workflows/ci.yml"><img src="https://github.com/phrenolt/agy-sandbox/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci"></a>
+</p>
+
 Runs the Google Antigravity CLI (`agy`) inside a Podman container — no host modifications, no silent self-updates, no Electron runtime scattered across your home directory.
 
 ```bash
@@ -23,6 +27,16 @@ agy-sandbox-prompt --usage   # show agy usage
 Containerised, all of that is isolated. Auth tokens and config survive between sessions via a bind mount owned by an isolated subUID — not your real user.
 
 ## Setup
+
+> **Cloning:** this repo vendors its shared shell logic from
+> [`agents-sandbox-common`](https://github.com/phrenolt/agents-sandbox-common)
+> as a git submodule at `common/`. Clone with submodules so it comes along:
+>
+> ```bash
+> git clone --recurse-submodules https://github.com/phrenolt/agy-sandbox.git
+> # already cloned without it? pull the submodule in:
+> git submodule update --init
+> ```
 
 ```bash
 # 1. build the image (prompts for optional tools like Cargo, Node, PNPM, Go, Java, Python tools, and PostgreSQL)

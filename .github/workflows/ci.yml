@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      # Scripts must parse.
+      - name: Shell syntax
+        run: |
+          for f in build.sh install.sh entrypoint.sh; do
+            [ -f "$f" ] && bash -n "$f"
+          done
+
+      # The managed shell block must render and be valid bash (substitution +
+      # sourcing common/lib.sh all wired up correctly).
+      - name: Render install block
+        run: |
+          ./install.sh --print > "$RUNNER_TEMP/block.sh"
+          bash -n "$RUNNER_TEMP/block.sh"
+
+      # Shared logic lives in the submodule — run its unit suite.
+      - name: Shared unit tests
+        run: ./common/tests/run.sh
