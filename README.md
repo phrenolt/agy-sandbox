@@ -3,7 +3,8 @@
 Runs the Google Antigravity CLI (`agy`) inside a Podman container — no host modifications, no silent self-updates, no Electron runtime scattered across your home directory.
 
 ```bash
-agy-sandbox              # launch interactive session
+agy-sandbox              # launch interactive session (preserves file permissions via --userns=keep-id)
+agy-sandbox --strict     # launch strict session (files owned by subUID, maximum isolation)
 agy-sandbox-sh           # drop into a bash shell inside the container
 agy-sandbox-prompt "write a hello world in Go"   # non-interactive
 agy-sandbox-prompt --im "Write a python script to calculate the fibonacci sequence" # allows selecting the model for the prompt interactively
@@ -24,8 +25,11 @@ Containerised, all of that is isolated. Auth tokens and config survive between s
 ## Setup
 
 ```bash
-# 1. build the image (downloads and verifies agy at build time)
+# 1. build the image (prompts for optional tools like Cargo, Node, PNPM, Go, Java, Python tools, and PostgreSQL)
 ./build.sh
+
+# Want a completely barebones container with only Python 3 and no prompts?
+./build.sh --raw
 
 # 2. install the shell function
 ./install.sh
@@ -37,6 +41,23 @@ agy-sandbox
 
 `./install.sh --print` shows the shell block without installing.
 `./install.sh --uninstall` removes it (backup saved).
+
+## Workspace Permissions & Isolation
+
+By default, `agy-sandbox` uses `--userns=keep-id`. This fluid developer experience maps the container's UID 1000 directly to your host's UID 1000, allowing you to edit the same files in the container and in your host IDE simultaneously without friction or "Permission Denied" errors.
+
+If you want maximum security and lockdown for a session, pass the `--strict` flag:
+```bash
+agy-sandbox --strict .
+```
+This forces `podman unshare chown` to take over the project files, locking down ownership to an isolated host subUID exclusively for the lifetime of the container.
+
+## Local Development Database (PostgreSQL)
+
+During `./build.sh`, you can opt to install PostgreSQL 18. If installed, the container automatically initializes and starts a background `postgres` server every time you boot `agy-sandbox`.
+
+- **Persistent**: The database data is stored in `~/.local/share/agy-sandbox/pgdata` on your host. Your data and schemas survive container restarts and rebuilds.
+- **Ready to Go**: A default `agy` user and `agy` database are automatically created.
 
 ## Updating agy
 
@@ -54,19 +75,20 @@ agy-sandbox-update   # pulls latest manifest, re-verifies checksum, rebuilds, re
 
 No silent background updates ever touch your host.
 
-## Auth
+## Image Details
 
-On first run `agy` will prompt for Google authentication via browser. The token is stored in `~/.local/share/agy-sandbox/` and reused on subsequent runs.
+Built from **`debian:trixie-slim`** (Debian 13) with native Python 3 and only the Chromium headless runtime deps (no GPU, audio, or font libs — those are only needed when rendering a display). The binary is downloaded from Google's official CDN, SHA512-verified at build time, and not executed during the build (`agy install` is intentionally skipped — shell config is the host's business).
 
-## How the config persistence works
+## Internal Security & Bubblewrap
 
-Config, auth tokens, and Chromium state land in `~/.local/share/agy-sandbox/` on the host, mounted into the container at `/home/agy`. Ownership is set with `podman unshare chown 1000:1000` — inside Podman's user namespace UID 1000 maps to a subUID on the host (e.g. UID 525287), not your real user. If anything escaped the container it would be confined to that subUID and could only touch the config directory.
+The only sensitive directory mounted into the container is `~/.gemini` (containing the agent's authentication tokens and instructions). To protect against supply-chain attacks, **all** injected development tools that execute third-party code (Python, Pip, Node, NPM, PNPM, Java, Gradle, Go, and Cargo) are surgically wrapped with `bwrap`.
 
-## Image
+Whenever you (or a script) run one of these tools, it executes inside a nested Mount Namespace where `~/.gemini` is dynamically replaced with an empty `tmpfs` (RAM disk). Thanks to Linux namespace inheritance, even if a malicious `postinstall` package executes and spawns an infinite tree of nested child processes, the entire execution tree is permanently blinded to your Gemini credentials.
 
-Built from `debian:bookworm-slim` with Node/npm, Python 3, and only the Chromium headless runtime deps (no GPU, audio, or font libs — those are only needed when rendering a display). The binary is downloaded from Google's official CDN, SHA512-verified at build time, and not executed during the build (`agy install` is intentionally skipped — shell config is the host's business).
-
-## Requirements
-
-- Podman (rootless)
-- A shell (`bash` or `zsh`)
+You can optionally inject development environments via the `./build.sh` prompts:
+- **Rust:** Cargo (via rustup)
+- **Node.js:** Node 20.x, NPM, and PNPM
+- **Java:** OpenJDK and Gradle
+- **Go:** Golang
+- **Python:** Pip and Virtual Environments (`python3-venv`)
+- **Database:** PostgreSQL 18

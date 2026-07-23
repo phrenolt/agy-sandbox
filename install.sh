@@ -56,7 +56,7 @@ agy-sandbox-update() {
   fi
 
   echo ">> rebuilding localhost/agy-sandbox:latest from $source_dir"
-  (cd "$source_dir" && $engine build --no-cache -t localhost/agy-sandbox:latest -f Containerfile .) || return
+  (cd "$source_dir" && ./build.sh --auto) || return
   _agy_pin_image "$engine"
 }
 
@@ -121,9 +121,16 @@ agy-sandbox-check-update() {
 # Build the image first:  cd /path/to/agy-sandbox && ./build.sh
 # Update the image later with: agy-sandbox-update
 _agy_sandbox_base() {
-  local entrypoint="$1"
-  local container_name="$2"
-  shift 2
+  local entrypoint="$1"; shift
+  local container_name="$1"; shift
+
+  local strict=false
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --strict) strict=true; shift ;;
+      *) break ;;
+    esac
+  done
 
   local engine; engine="$(_agy_engine)"
   [ -n "$engine" ] || { echo "Error: neither podman nor docker found." >&2; return 1; }
@@ -185,27 +192,37 @@ _agy_sandbox_base() {
   # subUID only for the lifetime of the container run.
   _agy_restore_project() {
     [ "$engine" = "podman" ] || return 0
-    podman unshare chown -R 0:0 "$project_dir" 2>/dev/null || true
+    if [ "$strict" = "true" ]; then
+      podman unshare chown -R 0:0 "$project_dir" 2>/dev/null || true
+    fi
   }
 
+  local userns_flag=()
   if [ "$engine" = "podman" ]; then
-    podman unshare chown -R 1000:1000 "$config_dir"
-    podman unshare chown -R 1000:1000 "$project_dir"
+    if [ "$strict" = "true" ]; then
+      podman unshare chown -R 1000:1000 "$config_dir"
+      podman unshare chown -R 1000:1000 "$project_dir"
+    else
+      podman unshare chown -R 0:0 "$config_dir" 2>/dev/null || true
+      podman unshare chown -R 0:0 "$project_dir" 2>/dev/null || true
+      userns_flag=(--userns=keep-id:uid=1000,gid=1000)
+    fi
   fi
 
   local status
-  local entrypoint_flag=()
-  [ -n "$entrypoint" ] && entrypoint_flag=(--entrypoint "$entrypoint")
+  local cmd_args=()
+  [ -n "$entrypoint" ] && cmd_args+=("$entrypoint")
+  cmd_args+=("$@")
 
   if $engine run --rm -it --name "$container_name" "${replace_flag[@]}" \
+    "${userns_flag[@]}" \
     --cap-drop=ALL \
     --security-opt=no-new-privileges \
-    "${entrypoint_flag[@]}" \
     -e TERM="${TERM:-xterm-256color}" \
     -v "$config_dir":/home/agy:Z \
     -v "$project_dir":/work:Z \
     "$image_id" \
-    "$@"
+    "${cmd_args[@]}"
   then
     status=0
   else
@@ -381,7 +398,7 @@ if [ "${2:-${1:-}}" != "--no-build" ] && [ "${1:-}" != "--no-build" ]; then
     if [ -x "$script_dir/build.sh" ]; then
       echo
       echo ">> building image..."
-      (cd "$script_dir" && ./build.sh)
+      (cd "$script_dir" && ./build.sh --auto)
     fi
   fi
 
