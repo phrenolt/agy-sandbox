@@ -23,7 +23,7 @@ jobs:
       - name: Shell syntax
         run: |
           for f in build.sh install.sh entrypoint.sh; do
-            [ -f "$f" ] && bash -n "$f"
+            if [ -f "$f" ]; then bash -n "$f"; fi
           done
 
       # The managed shell block must render and be valid bash (substitution +
