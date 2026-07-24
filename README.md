@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo-agy.jpg" alt="agy-sandbox logo" width="200">
+  <img src="logo-agy.jpg" alt="agy-sandbox logo" width="1000">
 </p>
 
 <h1 align="center">agy-sandbox</h1>
