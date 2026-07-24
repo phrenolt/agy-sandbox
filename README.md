@@ -1,8 +1,16 @@
-# agy-sandbox
+<p align="center">
+  <img src="logo-agy.jpg" alt="agy-sandbox logo" width="200">
+</p>
 
-<p>
+<h1 align="center">agy-sandbox</h1>
+
+<p align="center">
   <a href="https://github.com/phrenolt/agy-sandbox/actions/workflows/ci.yml"><img src="https://github.com/phrenolt/agy-sandbox/actions/workflows/ci.yml/badge.svg?branch=main" alt="ci"></a>
   <a href="https://github.com/phrenolt/agy-sandbox/actions/workflows/build.yml"><img src="https://github.com/phrenolt/agy-sandbox/actions/workflows/build.yml/badge.svg?branch=main" alt="build"></a>
+</p>
+
+<p align="center">
+  <a href="https://www.patreon.com/phrenolt"><img src="phrenolt-patreon-button-dark.png" alt="Support on Patreon" width="240"></a>
 </p>
 
 Runs the Google Antigravity CLI (`agy`) inside a Podman container — no host modifications, no silent self-updates, no Electron runtime scattered across your home directory.
