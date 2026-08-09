@@ -37,6 +37,17 @@ RUN if [ "$INSTALL_PIP" = "true" ]; then \
       rm -rf /var/lib/apt/lists/* ; \
     fi
 
+ARG INSTALL_FLUTTER=false
+ENV FLUTTER_ROOT=/opt/flutter \
+    FLUTTER_SUPPRESS_ANALYTICS=true
+COPY --chmod=0755 common/container/install-flutter.sh /usr/local/bin/install-flutter
+RUN if [ "$INSTALL_FLUTTER" = "true" ]; then \
+      apt-get update && apt-get install -y --no-install-recommends \
+        unzip xz-utils zip libglu1-mesa && \
+      /usr/local/bin/install-flutter && \
+      rm -rf /var/lib/apt/lists/* ; \
+    fi && rm /usr/local/bin/install-flutter
+
 ARG INSTALL_NODE=false
 RUN if [ "$INSTALL_NODE" = "true" ]; then \
       apt-get update && apt-get install -y --no-install-recommends nodejs npm && \

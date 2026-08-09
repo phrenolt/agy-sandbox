@@ -13,27 +13,36 @@
   <a href="https://www.patreon.com/phrenolt"><img src="phrenolt-patreon-button-dark.png" alt="Support on Patreon" width="240"></a>
 </p>
 
-Runs the Google Antigravity CLI (`agy`) inside a Podman container — no host modifications, no silent self-updates, no Electron runtime scattered across your home directory.
+Runs the Google Antigravity CLI (`agy`) inside a rootless Podman container. The
+installer adds a managed launcher block to your shell rc file; runtime state is
+kept under `~/.config/agy-sandbox` and `~/.local/share/agy-sandbox` instead of
+letting the CLI use your normal home directory.
 
 ```bash
 agy-sandbox              # launch interactive session (preserves file permissions via --userns=keep-id)
 agy-sandbox --strict     # launch strict session (files owned by subUID, maximum isolation)
+agy-sandbox . -c         # continue the most recent conversation in this project
 agy-sandbox-sh           # drop into a bash shell inside the container
 agy-sandbox-prompt "write a hello world in Go"   # non-interactive
 agy-sandbox-prompt --im "Write a python script to calculate the fibonacci sequence" # allows selecting the model for the prompt interactively
 agy-sandbox-prompt --model "Gemini 3.1 Pro (High)" --prompt "Tell what model you are" # note the model is case sensitive! use models below or --im above to call correct model.
 agy-sandbox-prompt models    # list available models
-agy-sandbox-prompt --usage   # show agy usage
+agy-sandbox-prompt --help    # show AGY help
 ```
 
 ## Why containerise it
 
 `agy` is an Electron app (full Chromium runtime) that:
+
 - writes Mesa shader caches, fontconfig, gvfs metadata, and Firefox profile files across your `$HOME` on every run
 - requests `cloud-platform` OAuth scope (full Google Cloud access)
 - self-updates silently on every invocation
 
-Containerised, all of that is isolated. Auth tokens and config survive between sessions via a bind mount owned by an isolated subUID — not your real user.
+Containerised, those writes stay in the sandbox home at
+`~/.local/share/agy-sandbox`. Interactive sessions expose only the selected
+project, that persistent sandbox home, and its dedicated scratch directory.
+Default sessions use `--userns=keep-id`, so those files remain owned by your
+host user; strict sessions use an isolated subUID.
 
 ## Setup
 
@@ -48,10 +57,10 @@ Containerised, all of that is isolated. Auth tokens and config survive between s
 > ```
 
 ```bash
-# 1. build the image (prompts for optional tools like Cargo, Node, PNPM, Go, Java, Python tools, and PostgreSQL)
+# 1. build the image (prompts for optional Flutter and other development tools)
 ./build.sh
 
-# Want a completely barebones container with only Python 3 and no prompts?
+# Want the base image without any optional development packages or prompts?
 ./build.sh --raw
 
 # 2. install the shell function
@@ -71,13 +80,24 @@ launcher API; old generated blocks are not retained as compatibility code.
 
 ## Workspace Permissions & Isolation
 
-By default, `agy-sandbox` uses `--userns=keep-id`. This fluid developer experience maps the container's UID 1000 directly to your host's UID 1000, allowing you to edit the same files in the container and in your host IDE simultaneously without friction or "Permission Denied" errors.
+An interactive session mounts:
+
+- the selected project at `/work`;
+- `~/.local/share/agy-sandbox` as the container home `/home/agy`;
+- `~/.local/share/agy-sandbox/scratch` at `/scratch`, also exposed as
+  `AGY_SCRATCH`.
+
+By default, `agy-sandbox` uses `--userns=keep-id`. Container UID 1000 maps to
+your host UID, so project and sandbox-home files remain editable from the host.
 
 If you want maximum security and lockdown for a session, pass the `--strict` flag:
+
 ```bash
 agy-sandbox --strict .
 ```
-This forces `podman unshare chown` to take over the project files, locking down ownership to an isolated host subUID exclusively for the lifetime of the container.
+This uses `podman unshare chown` to assign the project, sandbox home, and scratch
+directory to an isolated host subUID. Project ownership is restored when the
+container exits; persistent sandbox-home data remains subUID-owned.
 
 ## Local Development Database (PostgreSQL)
 
@@ -100,22 +120,43 @@ To update:
 agy-sandbox-update   # pulls latest manifest, re-verifies checksum, rebuilds, repins
 ```
 
-No silent background updates ever touch your host.
+Before an interactive launch, a throttled check (at most once every 24 hours)
+may report a newer version and ask whether to rebuild. The check records its
+timestamp under `~/.config/agy-sandbox`; it never rebuilds without confirmation.
 
 ## Image Details
 
-Built from **`debian:trixie-slim`** (Debian 13) with native Python 3 and only the Chromium headless runtime deps (no GPU, audio, or font libs — those are only needed when rendering a display). The binary is downloaded from Google's official CDN, SHA512-verified at build time, and not executed during the build (`agy install` is intentionally skipped — shell config is the host's business).
+Built from **`debian:trixie-slim`** (Debian 13). The base image includes curl,
+Git, Python 3, build tools, Bubblewrap, and the minimal Chromium libraries needed
+by the headless CLI. The AGY binary is downloaded from Google's manifest URL,
+validated against its SHA512 checksum, and invoked only with `--version` during
+the build. The `agy install` command is intentionally skipped because host shell
+configuration is managed by this repository's installer.
 
 ## Internal Security & Bubblewrap
 
-The only sensitive directory mounted into the container is `~/.gemini` (containing the agent's authentication tokens and instructions). To protect against supply-chain attacks, **all** injected development tools that execute third-party code (Python, Pip, Node, NPM, PNPM, Java, Gradle, Go, and Cargo) are surgically wrapped with `bwrap`.
+Authentication and agent configuration live in `.gemini` inside the persistent
+sandbox home; the host's normal `~/.gemini` is not mounted. The project and
+scratch directories described above are also mounted. Python and every optional
+development runtime installed by the build matrix (Pip, Flutter/Dart,
+Node/NPM/PNPM, Java, Gradle, Go, and Cargo) are wrapped with `bwrap`.
 
-Whenever you (or a script) run one of these tools, it executes inside a nested Mount Namespace where `~/.gemini` is dynamically replaced with an empty `tmpfs` (RAM disk). Thanks to Linux namespace inheritance, even if a malicious `postinstall` package executes and spawns an infinite tree of nested child processes, the entire execution tree is permanently blinded to your Gemini credentials.
+When one of those wrapped tools runs, it enters a nested mount namespace where
+`/home/agy/.gemini` is replaced with an empty in-memory filesystem. Descendant
+processes inherit that namespace and cannot read the persisted Gemini
+credentials.
 
 You can optionally inject development environments via the `./build.sh` prompts:
+
 - **Rust:** Cargo (via rustup)
-- **Node.js:** Node 20.x, NPM, and PNPM
+- **Node.js:** Debian's Node.js and NPM packages, plus optional PNPM 9
 - **Java:** OpenJDK and Gradle
 - **Go:** Golang
 - **Python:** Pip and Virtual Environments (`python3-venv`)
+- **Flutter:** Latest stable Flutter and Dart SDKs for analysis, formatting,
+  package management, code generation, and headless tests. Android Studio, the
+  Android SDK, emulators, Chrome, and desktop build toolchains are not installed;
+  `flutter doctor` reports those targets as unavailable by design. Project
+  dependencies still require network access when they are not already cached;
+  invoking an omitted platform may also make Flutter fetch its artifacts.
 - **Database:** PostgreSQL 18

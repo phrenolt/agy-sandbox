@@ -62,7 +62,7 @@ cf="$(cat "$REPO/Containerfile")"
 assert_contains "$cf" "FROM debian:trixie-slim"              "base = debian:trixie-slim"
 assert_contains "$cf" "SBX_AGENT=agy"                        "sets SBX_AGENT=agy"
 assert_contains "$cf" "common/container/entrypoint.sh"       "uses shared entrypoint"
-for arg in INSTALL_CARGO INSTALL_PIP INSTALL_NODE INSTALL_PNPM \
+for arg in INSTALL_CARGO INSTALL_PIP INSTALL_FLUTTER INSTALL_NODE INSTALL_PNPM \
            INSTALL_JDK INSTALL_GRADLE INSTALL_GO INSTALL_POSTGRES; do
   assert_contains "$cf" "ARG $arg" "declares $arg"
 done
