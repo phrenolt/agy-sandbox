@@ -62,6 +62,10 @@ source ~/.bashrc
 agy-sandbox
 ```
 
+After pulling repository updates, rerun `./install.sh` and source your shell rc
+file again. The generated launcher block must match the checked-out `common/`
+launcher API; old generated blocks are not retained as compatibility code.
+
 `./install.sh --print` shows the shell block without installing.
 `./install.sh --uninstall` removes it (backup saved).
 

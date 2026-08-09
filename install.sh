@@ -25,11 +25,6 @@ read -r -d '' SBX_BLOCK <<'BLOCK_EOF' || true
 # >>> agy-sandbox >>>
 # Managed by install.sh — edit the script / common lib, not this block (re-run to update).
 source "__SBX_COMMON_DIR__/lib.sh"
-SBX_TOOL=agy
-# Project dir mounted :z (shared) so a cooperating VSCode devcontainer can
-# co-mount the same directory without an SELinux MCS label collision.
-SBX_PROJECT_LABEL=z
-SBX_SOURCE_DIR="__SBX_SOURCE_DIR__"
 
 # Check if an update is available for agy without downloading it.
 agy-sandbox-check-update() {
@@ -88,21 +83,23 @@ _agy_update_hook() {
     fi
   fi
 }
-SBX_UPDATE_HOOK=_agy_update_hook
-
-agy-sandbox()        { _sbx_sandbox_base "" "agy-sandbox" "$@"; }
-agy-sandbox-sh()     { _sbx_sandbox_base "/bin/bash" "agy-sandbox-sh" "$@"; }
-agy-sandbox-update() { _sbx_update; }
+agy-sandbox() {
+  _sbx_v2_sandbox_base agy z _agy_update_hook "" "agy-sandbox" "$@"
+}
+agy-sandbox-sh() {
+  _sbx_v2_sandbox_base agy z _agy_update_hook "/bin/bash" "agy-sandbox-sh" "$@"
+}
+agy-sandbox-update() { _sbx_v2_update agy "__SBX_SOURCE_DIR__"; }
 
 # agy-specific interactive model picker. Everything else uses the shared prompt
 # (plain text becomes `agy --print "<text>"`).
 _agy_prompt_im() {
-  _sbx_require_podman || return 1
+  _sbx_v2_require_podman || return 1
   [ $# -gt 0 ] || { echo "usage: agy-sandbox-prompt --im <prompt>" >&2; return 1; }
   local config_dir="$HOME/.local/share/agy-sandbox"
   mkdir -p "$config_dir"
   podman unshare chown -R 1000:1000 "$config_dir"
-  local image_id; image_id="$(_sbx_resolve_image)" || return 1
+  local image_id; image_id="$(_sbx_v2_resolve_image agy)" || return 1
 
   local prompt="$*"
   local models_output model_list
@@ -150,7 +147,7 @@ _agy_prompt_im() {
 #   agy-sandbox-prompt models
 agy-sandbox-prompt() {
   if [ "${1:-}" = "--im" ]; then shift; _agy_prompt_im "$@"; return; fi
-  _sbx_prompt --print "$@"
+  _sbx_v2_prompt agy --print "$@"
 }
 # <<< agy-sandbox <<<
 BLOCK_EOF
